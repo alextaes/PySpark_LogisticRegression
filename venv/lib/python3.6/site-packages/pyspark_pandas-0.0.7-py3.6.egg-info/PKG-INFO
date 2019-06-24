@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: pyspark-pandas
+Version: 0.0.7
+Summary: Tools and algorithms for pandas Dataframes distributed on pyspark. Please consider the SparklingPandas project before this one
+Home-page: https://github.com/adgaudio/pyspark_pandas
+Author: Alex Gaudio
+Author-email: adgaudio@gmail.com
+License: UNKNOWN
+Description: Check the project homepage for details
+Keywords: spark pyspark pandas dataframe series
+Platform: UNKNOWN
