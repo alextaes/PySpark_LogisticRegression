@@ -7,40 +7,42 @@ from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import col
+from pyspark.mllib.evaluation import MulticlassMetrics
+from sklearn import metrics
 
 sc = SparkContext("local", "SLA prediction")
 
 spark = SparkSession.builder.getOrCreate()
 # Load the POC excel in a DataFrame
-data = pd.read_excel("/home/Desktop/hadoop/data.xls")
+data = pd.read_excel("/home/alejandro/Desktop/hadoop/data.xls")
 
-mySchema = StructType([StructField("id", IntegerType(), True) \
-                          , StructField("indep_variable_1", StringType(), True) \
-                          , StructField("indep_variable_2", StringType(), True) \
-                          , StructField("indep_variable_3", IntegerType(), True) \
-                          , StructField("indep_variable_4", StringType(), True) \
-                          , StructField("dep_variable", StringType(), True)])
+mySchema = StructType([StructField("ID", IntegerType(), True) \
+                          , StructField("TERCER_DOCUMENT", StringType(), True) \
+                          , StructField("TERCER_UNIT", StringType(), True) \
+                          , StructField("TEMPS_INICI", IntegerType(), True) \
+                          , StructField("AGENT_ASSIGNAT", StringType(), True) \
+                          , StructField("COMPLEIX_SLA", StringType(), True)])
 
 dataset = spark.createDataFrame(data, schema=mySchema)
 
 print(data.head(3))
 print(data.size)
 
-categoricalColumns = ["indep_variable_1", "indep_variable_2", "indep_variable_4"]
+categoricalColumns = ["TERCER_DOCUMENT", "TERCER_UNIT", "AGENT_ASSIGNAT"]
 stages = []  # stages in our Pipeline
 for categoricalCol in categoricalColumns:
-    # Variables categoricas indexadas con StringIndexer
+    # Categorical variables indexed with StringIndexer
     stringIndexer = StringIndexer(inputCol=categoricalCol, outputCol=categoricalCol + "Index")
     # Use OneHotEncoder to convert categorical variables into binary SparseVectors
     encoder = OneHotEncoderEstimator(inputCols=[stringIndexer.getOutputCol()], outputCols=[categoricalCol + "classVec"])
     stages += [stringIndexer, encoder]
 
 # Convert label into label indices using the StringIndexer
-label_stringIdx = StringIndexer(inputCol="dep_variable", outputCol="label")
+label_stringIdx = StringIndexer(inputCol="COMPLEIX_SLA", outputCol="label")
 stages += [label_stringIdx]
 
 # Transform all features into a vector using VectorAssembler
-numericCols = ["indep_variable_3"]
+numericCols = ["TEMPS_INICI"]
 assemblerInputs = [c + "classVec" for c in categoricalColumns] + numericCols
 assembler = VectorAssembler(inputCols=assemblerInputs, outputCol="features")
 stages += [assembler]
@@ -77,3 +79,17 @@ print(list(predictions))
 selected = predictions.select("features", "label", "probability", "prediction")
 selected.orderBy(col("label").desc()).show()
 
+#Confussion matrix and precission metrics
+testLabel = predictions.select("prediction", "label")
+
+mvv_list = testLabel.selectExpr("prediction as prediction", "label as label")
+arr_pred = [int(row['prediction']) for row in mvv_list.collect()]
+arr_label = [int(row['label']) for row in mvv_list.collect()]
+
+tp = testLabel.rdd.map(tuple)
+metricas = MulticlassMetrics(tp)
+confusion_mat = metricas.confusionMatrix()
+print(confusion_mat.toArray())
+print("Accuracy:", metrics.accuracy_score(arr_label, arr_pred))
+print("Precision:", metrics.precision_score(arr_label, arr_pred))
+print("Recall:", metrics.recall_score(arr_label, arr_pred))
