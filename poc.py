@@ -14,21 +14,21 @@ sc = SparkContext("local", "SLA prediction")
 
 spark = SparkSession.builder.getOrCreate()
 # Load the POC excel in a DataFrame
-data = pd.read_excel("/home/alejandro/Desktop/hadoop/data.xls")
+data = pd.read_excel("/home/Desktop/hadoop/data.xls")
 
-mySchema = StructType([StructField("ID", IntegerType(), True) \
-                          , StructField("TERCER_DOCUMENT", StringType(), True) \
-                          , StructField("TERCER_UNIT", StringType(), True) \
-                          , StructField("TEMPS_INICI", IntegerType(), True) \
-                          , StructField("AGENT_ASSIGNAT", StringType(), True) \
-                          , StructField("COMPLEIX_SLA", StringType(), True)])
+mySchema = StructType([StructField("id", IntegerType(), True) \
+                          , StructField("indep_var1", StringType(), True) \
+                          , StructField("indep_var2", StringType(), True) \
+                          , StructField("indep_var3", IntegerType(), True) \
+                          , StructField("indep_var4", StringType(), True) \
+                          , StructField("dep_var", StringType(), True)])
 
 dataset = spark.createDataFrame(data, schema=mySchema)
 
 print(data.head(3))
 print(data.size)
 
-categoricalColumns = ["TERCER_DOCUMENT", "TERCER_UNIT", "AGENT_ASSIGNAT"]
+categoricalColumns = ["indep_var1", "indep_var2", "indep_var4"]
 stages = []  # stages in our Pipeline
 for categoricalCol in categoricalColumns:
     # Categorical variables indexed with StringIndexer
@@ -38,11 +38,11 @@ for categoricalCol in categoricalColumns:
     stages += [stringIndexer, encoder]
 
 # Convert label into label indices using the StringIndexer
-label_stringIdx = StringIndexer(inputCol="COMPLEIX_SLA", outputCol="label")
+label_stringIdx = StringIndexer(inputCol="dep_var", outputCol="label")
 stages += [label_stringIdx]
 
 # Transform all features into a vector using VectorAssembler
-numericCols = ["TEMPS_INICI"]
+numericCols = ["indep_var3"]
 assemblerInputs = [c + "classVec" for c in categoricalColumns] + numericCols
 assembler = VectorAssembler(inputCols=assemblerInputs, outputCol="features")
 stages += [assembler]
